@@ -5,7 +5,7 @@ php-vmware-perl-sdk
 
 <p>Wrapper class for easy interfacing with <a href="http://www.vmware.com">Vmware vSphere</a> allowing for simple integration of vSphere functionality into your own applications.</p>
 
-<p>@filename vsphere.php<br />@author Benton Snyder<br />@link <a href="http://noumenaldesigns.com" alt="Noumenal Designs">http://noumenaldesigns.com</a></p>
+<p>@filename vmware.php<br />@author Benton Snyder<br />@link <a href="http://noumenaldesigns.com" alt="Noumenal Designs">http://noumenaldesigns.com</a></p>
 
 <p>Tested on vSphere 4,5</p>
 
