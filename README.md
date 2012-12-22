@@ -14,7 +14,7 @@ php-vmware-perl-sdk
 <h4>To do</h4>
  <ul>
   <li>Validate method paramaters</li>
-  <li>Some functions are not fully implemented<li>
+  <li>Some functions are not fully implemented</li>
  </ul>
 
 <h4>Usage</h4>
