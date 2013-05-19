@@ -1,9 +1,9 @@
 php-vmware-perl-sdk
 ===================
 
-<h3>PHP Wrapper for Vmware vSphere Perl SDK</h3>
+<h3>Vmware vSphere Perl SDK PHP Library</h3>
 
-<p>Wrapper class for easy interfacing <a href="http://www.vmware.com">VmWare vSphere</a> data into your PHP application.</p>
+<p>Library class for easy interfacing <a href="http://www.vmware.com">VmWare vSphere</a> data into your PHP application.</p>
 
 <p><strong>Warning:</strong> This is intended as a guide only. This is not recommended for production use.</p>
 
