@@ -51,11 +51,15 @@ class Vmware
 	*/
 	private function vQuery($script, Array $kvData=[]) 
 	{
-		$exec_str = "{$this->perl} {$this->sdk}{$script} --server {$this->host} --username '{$this->username}' --password '{$this->password}'";
-		foreach($kvData as $key=>$val)
-			$exec_str .= " --{$key} '{$val}'";
+		$exec_str = "{$this->perl} {$this->sdk}{$script}";
+		if(file_exists($exec_str))
+		{
+			$exec_str .= " --server {$this->host} --username '{$this->username}' --password '{$this->password}'";
+			foreach($kvData as $key=>$val)
+				$exec_str .= " --{$key} '{$val}'";
 		
-		return shell_exec($exec_str);
+			return shell_exec(escapeshellcmd($exec_str));
+		}
 	}
 
 	/**
