@@ -4,7 +4,8 @@
  * PHP Wrapper of VmWare vSphere Perl SDK
  *
  * Wrapper class for easy interfacing VmWare vSphere data into your PHP application. 
- * Not all functionality provided by vSphere or the Perl SDK is implemented. 
+ * Note, this requires the Vmware vSphere Perl SDK. Not all functionality provided 
+ * by vSphere or the Perl SDK is implemented. 
  * 
  * Intended as a guide only. Not recommended for production use. 
  *
@@ -18,7 +19,7 @@
 
 class Vmware
 {
-  private $host;
+    private $host;
 	private $username;
 	private $password;
 	private $perl;			// path to perl
@@ -31,15 +32,30 @@ class Vmware
 	 * @param
 	 * @return
 	 */
-	function __construct($host, $username, $password, $perl='$this->perl', $sdk='$this->sdk')
-	{
-		parent::__construct();
-		
+	function __construct($host, $username, $password, $perl='/path/to/perl', $sdk='/path/to/vsphere/perl/sdk')
+	{		
 		$this->host = $host;
 		$this->username = $username;
 		$this->password = $password;
 		$this->perl = $perl;
 		$this->sdk = $sdk;
+	}
+
+	/**
+	* Internal function to execute specified perl script with specified arguments and return the output
+	*
+	* @access 		public
+	* @param 		string
+	* @param 		array
+	* @return 		string
+	*/
+	private function vQuery($script, Array $kvData=[]) 
+	{
+		$exec_str = "{$this->perl} {$this->sdk}{$script} --server {$this->host} --username '{$this->username}' --password '{$this->password}'";
+		foreach($kvData as $key=>$val)
+			$exec_str .= " --{$key} '{$val}'";
+		
+		return shell_exec($exec_str);
 	}
 
 	/**
@@ -51,8 +67,9 @@ class Vmware
 	 */
 	public function getVmInfo($vmname)
 	{
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vminfo.pl --vmname {$vmname} --server {$this->host} --username {$this->username} --password '{$this->password}'");
-		return $details;
+		$script = 'vm/vminfo.pl';
+		$data['vmname'] = $vmname;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -66,8 +83,10 @@ class Vmware
 	{
 		if($action == "display" || $action == "customize")
 		{
-			$details = shell_exec("{$this->perl} {$this->sdk}vm/guestinfo.pl --operation {$action} --vmname {$vmname} --server {$this->host} --username {$this->username} --password '{$this->password}'");
-			return $details;
+			$script = 'vm/guestinfo.pl';
+			$data['vmname'] = $vmname;
+			$data['operation'] = $action;
+			return $this->vQuery($script, $data)
 		}
 	}
 
@@ -81,8 +100,9 @@ class Vmware
 	public function getShareInfo($vmname)
 	{
 		// filters: memory[int,low,normal,high],cpu[int,low,normal,high],diskvalue[int,low,normal,high +diskname]
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/sharesmanager.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --vmname {$vmname}");
-		return $details;
+		$script = 'vm/sharesmanager.pl';
+		$data = ['vmname'] = $vmname;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -92,14 +112,17 @@ class Vmware
 	 * @param        string
 	 * @return       string
 	 */
-	public function getSnapshot($vmname = FALSE, $action = "list")
+	public function getSnapshot($vmname = NULL, $action = "list")
 	{
 		// filters: vmname,datacenter,pool,host,folder,ipaddress,powerstatus,guestos
 		$valid = array("list", "revert", "goto", "rename", "remove", "removeall", "create");
 		if(in_array($action, $valid))
 		{
-			$details = shell_exec("{$this->perl} {$this->sdk}vm/snapshotmanager.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --operation {$action}".($vmname ? " --vmname {$vmname}" : ""));
-			return $details;
+			$script = 'vm/snapshotmanager.pl';
+			$data['operation'] = $action;
+			if($vmname)
+				$data['vmname'] = $vmname;
+			return $this->vQuery($script, $data);
 		}
 	}
 
@@ -110,11 +133,13 @@ class Vmware
 	 * @param        string
 	 * @return       string
 	 */
-	public function vmSnapshot($snapshot_name)
+	public function vmSnapshot($vmname, $snapshot_name)
 	{
 		// filters: vmname,powerstatus,ipaddress,guest_os -- host, datacenter, folder, pool
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vmsnapshot.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --sname {$snapshot_name} --vmname {$vmname}");
-		return $details;
+		$script = 'vm/vmsnapshot.pl';
+		$data['vmname'] = $vmname;
+		$data['sname'] = $snapshot_name;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -127,8 +152,10 @@ class Vmware
 	public function addVdisk($vmname, $filename)
 	{
 		// filters: disksize(mb),nopersis,independent,backingtype
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vdiskcreate.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --vmname {$vmname} --filename {$filename}");
-		return $details;
+		$script = 'vm/vdiskcreate.pl';
+		$data['vmname'] = $vmname;
+		$data['filename'] = $filename;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -141,8 +168,11 @@ class Vmware
 	public function vmClone($vmhost, $vmname, $vmname_destination)
 	{
 		// filters: datastore
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vmclone.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --vmname {$vmname} --vmhost {$vmhost} --vmname_destination {$vmname_destination}");
-		return $details;
+		$script = 'vm/vmclone.pl';
+		$data['vmname'] = $vmname;
+		$data['vmhost'] = $vmhost;
+		$data['vmname_destination']	= $vmname_destination;	
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -158,8 +188,9 @@ class Vmware
 		$valid = array("poweron", "poweroff", "suspend", "reboot", "reset", "shutdown", "standby");
 		if(in_array($action, $valid))
 		{
-			$details = shell_exec("{$this->perl} {$this->sdk}vm/vmcontrol.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --operation {$action}");
-			return $details;
+			$script = 'vm/vmcontrol.pl';
+			$data['operation'] = $action;
+			return $this->vQuery($script, $data);
 		}
 	}
 
@@ -173,8 +204,13 @@ class Vmware
 	public function vmCreate($filename = NULL, $schema = NULL)
 	{
 		// http://pubs.vmware.com/vsphere-51/topic/com.vmware.perlsdk.uaref.doc/vmcreate.html
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vmcreate.pl --server {$this->host} --username {$this->username} --password '{$this->password}'");
-		return $details;
+		$script = 'vm/vmcreate.pl';
+		$data = array();
+		if($filename)
+			$data['filename'] = $filename;
+		if($schema)
+			$data['schema'] = $schema;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -187,8 +223,13 @@ class Vmware
 	public function vmMigrate($vmname, $sourcehost, $targethost, $targetdatastore, $targetpool)
 	{
 		// filters: priority[default,high,low], state[poweredOn,poweredOff,suspended]
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vmmigrate.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --vmname {$vmname} --sourcehost {$sourcehost} --targethost {$targethost} --targetdatastore {$targetdatastore} --targetpool {$targetpool}");
-		return $details;
+		$script = 'vm/vmmigrate.pl';
+		$data['vmname'] = $vmname;
+		$data['sourcehost'] = $sourcehost;
+		$data['targethost'] = $targethost;
+		$data['targetdatastore'] = $targetdatastore;
+		$data['targetpool'] = $targetpool;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -200,8 +241,13 @@ class Vmware
 	 */
 	public function vmReconfig($filename = NULL, $schema = NULL)
 	{
-		$details = shell_exec("{$this->perl} {$this->sdk}vm/vmreconfig.pl --server {$this->host} --username {$this->username} --password '{$this->password}'");
-		return $details;
+		$script = 'vm/vmreconfig.pl';
+		$data = array();
+		if($filename)
+			$data['filename'] = $filename;
+		if($schema)
+			$data['schema'] = $schema;
+		return $this->vQuery($script, $data);			
 	}
 
 	/**
@@ -232,8 +278,10 @@ class Vmware
 		if($action=="T" || $action=="VM")
 		{
 			// filters: pool, host
-			$details = shell_exec("{$this->perl} {$this->sdk}vm/vmtemplate.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --operation {$action} --vmname {$vmname}");
-			return $details;
+			$script = 'vm/vmtemplate.pl';
+			$data['vmname'] = $vmname;
+			$data['operation'] = $action;
+			return $this->vQuery($script, $data);
 		}
 	}
 
@@ -244,10 +292,13 @@ class Vmware
 	 * @param
 	 * @return       string
 	 */
-	public function getHostDetails($host = FALSE)
+	public function getHostDetails($host = NULL)
 	{
-		$details = shell_exec("{$this->perl} {$this->sdk}host/hostinfo.pl --server {$this->host} --username {$this->username} --password '{$this->password}'".($host ? " --hostname {$host}" : ""));
-		return $details;
+		$script = 'host/hostinfo.pl';
+		$data = array();
+		if($host)
+			$data['host'] = $host;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -275,12 +326,15 @@ class Vmware
 	 * @param        string
 	 * @return       string
 	 */
-	public function hostBrowseDS($datastore = FALSE)
+	public function hostBrowseDS($datastore = NULL)
 	{
 		// WARNING: takes a long time for larger datastores unless filters are applied!!
 		// filters: attributes,capacity,filetype,freespace,name
-		$details = shell_exec("{$this->perl} {$this->sdk}host/dsbrowse.pl --server {$this->host} --username {$this->username} --password '{$this->password}'".($datastore ? " --name {$datastore}" : ""));
-		return $details;
+		$script = 'host/dsbrowse.pl';
+		$data = array();
+		if($datastore)
+			$data['datastore'] = $datastore;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -296,8 +350,12 @@ class Vmware
 		$valid_priority = array("default", "high", "low");
 		$valid_state = array("poweredOn", "poweredOff", "suspended");
 
-		$details = shell_exec("{$this->perl} {$this->sdk}host/hostevacuate.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --sourcehost {$sourcehost} --targethost {$targethost} --targetdatastore {$targetdatastore} --targetpool {$targetpool}");
-		return $details;
+		$script = 'host/hostevacuate.pl';
+		$data['sourcehost'] = $sourcehost;
+		$data['targethost'] = $targethost;
+		$data['targetdatastore'] = $targetdatastore;
+		$data['targetpool'] = $targetpool;
+		return $this->vQuery($script, $data);
 	}
 
 	/**
@@ -312,8 +370,9 @@ class Vmware
 		$valid = array("all", "apiinfo", "product", "version", "ostype");
 		if(in_array($service, $valid))
 		{
-			$details = shell_exec("{$this->perl} {$this->sdk}general/viversion.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --aboutservice {$service}");
-			return $details;
+			$script = 'general/viversion.pl';
+			$data['aboutservice'] = $service;
+			return $this->vQuery($script, $data);
 		}
 	}
 
@@ -330,8 +389,10 @@ class Vmware
 		$valid = array("cpu", "mem", "net", "disk", "sys");
 		if(in_array($counter, $valid))
 		{
-			$details = shell_exec("{$this->perl} {$this->sdk}performance/viperformance.pl --server {$this->host} --username {$this->username} --password '{$this->password}' --host {$host} --countertype {$counter}");
-			return $details;
+			$script = 'performance/viperformance.pl';
+			$data['host'] = $host;
+			$data['countertype'] = $counter;
+			return $this->vQuery($script, $data);
 		}
 	}
 }
